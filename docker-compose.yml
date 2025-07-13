@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: payment-api
+    ports:
+      - "9999:9999"
+    networks:
+      - app-network
+      - payment-processor
+    depends_on:
+      - redis
+      - mongodb
+    environment:
+      - PAYMENT_PROCESSOR_URL_DEFAULT=http://payment-processor-default:8080
+      - PAYMENT_PROCESSOR_URL_FALLBACK=http://payment-processor-fallback:8080
+      - MONGO_URI=mongodb://mongodb/payment
+      - REDIS_URI=redis://redis:6379
+    deploy:
+      resources:
+        limits:
+          cpus: "0.7"
+          memory: "160MB"
+  mongodb:
+    image: mongo
+    container_name: payment-db
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_DATABASE=payment
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: "140MB"
+    networks:
+      - app-network
+    restart: always
+  redis:
+    image: redis:7.2-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.3"
+          memory: "50MB"
+    networks:
+      - app-network
+networks:
+  payment-processor:
+    external: true
+  app-network:
+
+
+
