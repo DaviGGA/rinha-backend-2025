@@ -9,7 +9,6 @@ export let redis: Redis;
 redis = new Redis(
     process.env.REDIS_URI ?? "", { 
         maxRetriesPerRequest: null, 
-        //keepAlive: 32
     });
 
 const queue = new Queue("payment-processor", {connection: redis});
@@ -22,7 +21,7 @@ redis.on("connect", async () => {
 
 const worker = new Worker("payment-processor", async (job: Job<ToProcessPayment>) => {
     return await processPayment(job.data)
-}, {connection: redis, concurrency: 2})
+}, {connection: redis})
 
 worker.on("completed", async (job) => {
     const result = job.returnvalue as Payment;
@@ -35,7 +34,7 @@ worker.on("failed", async () => {
 
 new Worker("check-health", async () => {
     savePaymentProcessorHealth()
-}, {connection: redis})
+}, {connection: redis, concurrency: 2})
 
 
 export { queue }

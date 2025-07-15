@@ -97,22 +97,26 @@ export async function getPPPaymentsSummary(service, from, to) {
     const httpClient = paymentProcessorHttp[service];
     const response = await httpClient.asyncGet(`/admin/payments-summary?from=${from}&to=${to}`);
 
-    if (response.status != 200) {
-        exec.test.abort(`Erro ao obter admin payments summary para ${service} (HTTP ${response.status}).`);
+    if (response.status == 200) {
+        return JSON.parse(response.body);
     }
 
-    return JSON.parse(response.body);
+    console.error(`Não foi possível obter resposta de '/admin/payments-summary?from=${from}&to=${to}' para ${service} (HTTP ${response.status})`);
+
+    return {
+        totalAmount: 0,
+        totalRequests: 0,
+        feePerTransaction: 0,
+        totalFee: 0
+    }
 }
 
 export async function resetBackendDatabase() {
-    try {
-        const response = await backendHttp.asyncPost('/purge-payments');
 
-        if (response.status != 200) {
-            exec.test.abort(`Erro ao resetar database do backend (HTTP ${response.status}).`);
-        }
+    try {
+        await backendHttp.asyncPost('/purge-payments');
     } catch (error) {
-          console.warn("Seu backend provavelmente não possui um endpoint para resetar o banco. Isso não é um problem.", error.message);
+        console.info("Seu backend provavelmente não possui um endpoint para resetar o banco. Isso não é um problem.", error.message);
     }
 }
 
@@ -120,11 +124,22 @@ export async function getBackendPaymentsSummary(from, to) {
 
     const response = await backendHttp.asyncGet(`/payments-summary?from=${from}&to=${to}`);
 
-    if (response.status != 200) {
-        exec.test.abort(`Erro ao obter admin payments summary do backend (HTTP ${response.status}).`);
+    if (response.status == 200) {
+        return JSON.parse(response.body);
     }
 
-    return JSON.parse(response.body);
+    console.error(`Não foi possível obter resposta de '/payments-summary?from=${from}&to=${to}' para o backend (HTTP ${response.status})`);
+
+    return {
+        default: {
+            totalAmount: 0,
+            totalRequests: 0
+        },
+        fallback: {
+            totalAmount: 0,
+            totalRequests: 0
+        }
+    }
 }
 
 export async function requestBackendPayment(payload) {

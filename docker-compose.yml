@@ -66,8 +66,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.35"
-          memory: "90MB"
+          cpus: "0.25"
+          memory: "70MB"
     networks:
       - app-network
     restart: always
@@ -79,8 +79,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.2"
-          memory: "90MB"
+          cpus: "0.3"
+          memory: "110MB"
     networks:
       - app-network
 networks:
