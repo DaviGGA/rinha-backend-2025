@@ -50,7 +50,7 @@ export async function paymentSummary(from: string | undefined, to: string | unde
     }
   }
 
-  result.default.totalAmount = result.default.totalAmount;
+  result.default.totalAmount /= 100;
   result.fallback.totalAmount /= 100;
 
   return result
