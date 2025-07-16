@@ -1,8 +1,8 @@
 import { redis } from "./queue";
 import { createPaymentProcessor } from "../gateway/payment-processor"
 import { ServiceHealth } from "../gateway/service-health";
-import { Payment, PaymentModel, ToProcessPayment } from "./mongo-payment";
-import { PipelineStage } from "mongoose";
+import { Payment, ToProcessPayment } from "./payment";
+import { parseStringArrToJson } from "./utils";
 
 export async function processPayment(payment: ToProcessPayment) {
   const chosenProcessor = (await redis.get("processor") ?? "default") as ("default" | "fallback");
@@ -11,7 +11,7 @@ export async function processPayment(payment: ToProcessPayment) {
   const processPayment = {
     ...payment, 
     type: chosenProcessor,
-    requestedAt: new Date()
+    requestedAt: new Date().toISOString()
   }
 
   const { success } = await paymentProcessor.processPayment(processPayment);
@@ -23,38 +23,52 @@ export async function processPayment(payment: ToProcessPayment) {
 }
 
 export async function savePayment(payment: Payment) {
-  return await PaymentModel.create(payment)
+  return await redis.lpush("payments", JSON.stringify({...payment, amount: payment.amount * 100}))
 }
 
 export async function paymentSummary(from: string | undefined, to: string | undefined) {
-  const result = await PaymentModel.aggregate([
-    { $match: !from && !to ? {} : dateFilter(from, to) },
-    {
-      $group: {
-        _id: "$type",
-        totalRequests: {$sum: 1},
-        totalAmount: {$sum: "$amount"}
-      },  
-    }
-  ])
+  const stringPayments = (await redis.lrange("payments", 0, -1));
 
-  const fallBackResult = result
-    .find(agg => agg._id == "fallback")
+  const payments = parseStringArrToJson<Payment>(stringPayments)
+
+  const result = {
+    default: { totalRequest: 0, totalAmount: 0 },
+    fallback: { totalRequest: 0, totalAmount: 0 }
+  };
+
+  for (const payment of payments) {
+    if(!isFromRange(payment, {from, to})) continue;
     
-  const defaultResult = result
-    .find(agg => agg._id == "default")
+    if (payment.type == "default") {
+      result.default.totalAmount += payment.amount;
+      result.default.totalRequest += 1;
+    }
 
-  return {
-    default: defaultResult ?? { totalRequests: 0, totalAmount: 0 },
-    fallback: fallBackResult ?? { totalRequest: 0, totalAmount: 0 }
+    if (payment.type == "fallback") {
+      result.fallback.totalAmount += payment.amount;
+      result.fallback.totalRequest += 1;
+    }
   }
+
+  result.default.totalAmount = result.default.totalAmount;
+  result.fallback.totalAmount /= 100;
+
+  return result
 }
 
-function dateFilter(from: string | undefined, to: string | undefined) {
-  const obj: Record<string, any> = {requestedAt: {} };
-  if (from) obj.requestedAt.$gte = new Date(from);
-  if (to) obj.requestedAt.$lte = new Date(to);
-  return obj
+type Range = { from: string | undefined, to: string | undefined }
+function isFromRange(payment: Payment, { from, to }: Range) {
+  
+  if (!from  && !to) return true;
+
+  const paymentDate = new Date(payment.requestedAt).getTime();
+  const fromDate = new Date(from!).getTime();
+  const toDate = new Date(to!).getTime();
+
+  if (from && !to) return fromDate <= paymentDate;
+  if (!from && to) return paymentDate >= toDate;
+  
+  return fromDate <= paymentDate && toDate >= paymentDate
 }
 
 export async function savePaymentProcessorHealth() {

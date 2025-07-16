@@ -293,12 +293,12 @@ export function handleSummary(data) {
     },
     default: {
       total_bruto: data.metrics.default_total_amount.values.count,
-      num_pagamentos: data.metrics.default_total_requests.values.count,
+      //num_pagamentos: data.metrics.default_total_requests.values.count,
       total_taxas: data.metrics.default_total_fee.values.count,
     },
     fallback: {
       total_bruto: data.metrics.fallback_total_amount.values.count,
-      num_pagamentos: data.metrics.fallback_total_requests.values.count,
+      //num_pagamentos: data.metrics.fallback_total_requests.values.count,
       total_taxas: data.metrics.fallback_total_fee.values.count
     },
   };

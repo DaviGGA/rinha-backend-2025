@@ -1,14 +1,14 @@
 import {Queue, Worker, Job} from "bullmq"
 import { savePayment, processPayment, savePaymentProcessorHealth } from "./service";
-import { Payment, ToProcessPayment } from "./mongo-payment";
+import { Payment, ToProcessPayment } from "./payment";
 import Redis from "ioredis";
 
 export let redis: Redis;
 
-
 redis = new Redis(
     process.env.REDIS_URI ?? "", { 
         maxRetriesPerRequest: null, 
+        keepAlive: 100,
     });
 
 const queue = new Queue("payment-processor", {connection: redis});
@@ -21,20 +21,20 @@ redis.on("connect", async () => {
 
 const worker = new Worker("payment-processor", async (job: Job<ToProcessPayment>) => {
     return await processPayment(job.data)
-}, {connection: redis})
+}, {connection: redis, concurrency: 32})
 
 worker.on("completed", async (job) => {
     const result = job.returnvalue as Payment;
     savePayment(result)
 })
 
-worker.on("failed", async () => {
+worker.on("failed", async (job) => {
     redis.set("processor", "fallback")
 })
 
 new Worker("check-health", async () => {
     savePaymentProcessorHealth()
-}, {connection: redis, concurrency: 2})
+}, {connection: redis})
 
 
 export { queue }
