@@ -1,5 +1,5 @@
 import { ServiceHealth } from "../gateway/service-health";
-import { Payment } from "../payment/mongo-payment";
+import { Payment } from "../payment/payment";
 
 type ServiceHealthResponse =
   {success: true, data: ServiceHealth} |
@@ -39,11 +39,9 @@ function processPayment(url: string) {
     const result = await fetch(`${url}/payments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...payment, 
-        requestedAt: payment.requestedAt.toISOString()})
-    })
-    return {success: result.ok}
+      body: JSON.stringify(payment)});
+    
+      return {success: result.ok}
   }
 }
 
