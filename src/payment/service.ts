@@ -2,7 +2,7 @@ import { redis } from "./queue";
 import { createPaymentProcessor } from "../gateway/payment-processor"
 import { ServiceHealth } from "../gateway/service-health";
 import { Payment, ToProcessPayment } from "./payment";
-import { parseStringArrToJson } from "./utils";
+import { fromFixedPoint, parseStringArrToJson, toFixedPoint } from "./utils";
 
 export async function processPayment(payment: ToProcessPayment) {
   const chosenProcessor = (await redis.get("processor") ?? "default") as ("default" | "fallback");
@@ -23,7 +23,7 @@ export async function processPayment(payment: ToProcessPayment) {
 }
 
 export async function savePayment(payment: Payment) {
-  return await redis.lpush("payments", JSON.stringify({...payment, amount: payment.amount * 100}))
+  return await redis.lpush("payments", JSON.stringify(payment))
 }
 
 export async function paymentSummary(from: string | undefined, to: string | undefined) {
@@ -32,28 +32,28 @@ export async function paymentSummary(from: string | undefined, to: string | unde
   const payments = parseStringArrToJson<Payment>(stringPayments)
 
   const result = {
-    default: { totalRequest: 0, totalAmount: 0 },
-    fallback: { totalRequest: 0, totalAmount: 0 }
+    default: { totalRequests: 0, totalAmount: 0n },
+    fallback: { totalRequests: 0, totalAmount: 0n }
   };
 
   for (const payment of payments) {
     if(!isFromRange(payment, {from, to})) continue;
     
     if (payment.type == "default") {
-      result.default.totalAmount += payment.amount;
-      result.default.totalRequest += 1;
+      result.default.totalAmount += toFixedPoint(payment.amount);
+      result.default.totalRequests += 1;
     }
 
     if (payment.type == "fallback") {
-      result.fallback.totalAmount += payment.amount;
-      result.fallback.totalRequest += 1;
+      result.fallback.totalAmount += toFixedPoint(payment.amount);
+      result.fallback.totalRequests += 1;
     }
   }
 
-  result.default.totalAmount /= 100;
-  result.fallback.totalAmount /= 100;
-
-  return result
+  return {
+    default: {...result.default, totalAmount: fromFixedPoint(result.default.totalAmount)},
+    fallback: {...result.fallback, totalAmount: fromFixedPoint(result.fallback.totalAmount)}
+  }
 }
 
 type Range = { from: string | undefined, to: string | undefined }
@@ -78,7 +78,7 @@ export async function savePaymentProcessorHealth() {
   const [defaultHealth, fallbackHealth] = await Promise.all([
     defaultHealthPromise,
     fallBackHealthPromise
-  ]) 
+  ])
 
   if(!defaultHealth.success || !fallbackHealth.success) {
     return;
@@ -105,3 +105,5 @@ function choosePaymentProcessorHealth(
   return responseTimeRatio > MAX_RESPONSE_TIME_RATIO ?
     "fallback" : "default"
 }
+
+

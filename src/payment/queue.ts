@@ -21,7 +21,7 @@ redis.on("connect", async () => {
 
 const worker = new Worker("payment-processor", async (job: Job<ToProcessPayment>) => {
     return await processPayment(job.data)
-}, {connection: redis, concurrency: 32})
+}, {connection: redis, concurrency: 48})
 
 worker.on("completed", async (job) => {
     const result = job.returnvalue as Payment;
