@@ -6,7 +6,7 @@ export function processPayment(ctx: Context) {
   const body = ctx.request.body;
   
   queue.add("process-payment", body, {
-    attempts: 3, 
+    attempts: 5, 
     backoff: {
       type :"fixed", 
       delay: 1_000
