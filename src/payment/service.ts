@@ -2,7 +2,7 @@ import { redis } from "./queue";
 import { createPaymentProcessor } from "../gateway/payment-processor"
 import { ServiceHealth } from "../gateway/service-health";
 import { Payment, ToProcessPayment } from "./payment";
-import { fromFixedPoint, parseStringArrToJson, toFixedPoint } from "./utils";
+import { parseStringArrToJson, safeDollar} from "./utils";
 
 export async function processPayment(payment: ToProcessPayment) {
   const chosenProcessor = (await redis.get("processor") ?? "default") as ("default" | "fallback");
@@ -23,6 +23,7 @@ export async function processPayment(payment: ToProcessPayment) {
 }
 
 export async function savePayment(payment: Payment) {
+  payment.amount = payment.amount * 100;
   return await redis.lpush("payments", JSON.stringify(payment))
 }
 
@@ -32,27 +33,27 @@ export async function paymentSummary(from: string | undefined, to: string | unde
   const payments = parseStringArrToJson<Payment>(stringPayments)
 
   const result = {
-    default: { totalRequests: 0, totalAmount: 0n },
-    fallback: { totalRequests: 0, totalAmount: 0n }
+    default: { totalRequests: 0, totalAmount: 0 },
+    fallback: { totalRequests: 0, totalAmount: 0 }
   };
-
+  
   for (const payment of payments) {
     if(!isFromRange(payment, {from, to})) continue;
     
     if (payment.type == "default") {
-      result.default.totalAmount += toFixedPoint(payment.amount);
+      result.default.totalAmount += payment.amount;
       result.default.totalRequests += 1;
     }
 
     if (payment.type == "fallback") {
-      result.fallback.totalAmount += toFixedPoint(payment.amount);
+      result.fallback.totalAmount += payment.amount;
       result.fallback.totalRequests += 1;
     }
   }
 
   return {
-    default: {...result.default, totalAmount: fromFixedPoint(result.default.totalAmount)},
-    fallback: {...result.fallback, totalAmount: fromFixedPoint(result.fallback.totalAmount)}
+    default: {...result.default, totalAmount: safeDollar(result.default.totalAmount)},
+    fallback: {...result.fallback, totalAmount: safeDollar(result.fallback.totalAmount)}
   }
 }
 

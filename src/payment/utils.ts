@@ -5,10 +5,8 @@ export function parseStringArrToJson<T>(arr: ValidJSONArray): T[] {
   return JSON.parse(wrap) as T[];
 }
 
-export function toFixedPoint(value: number, scale: bigint = 100n): bigint {
-  return BigInt(Math.round(value * Number(scale)));
-}
 
-export function fromFixedPoint(value: bigint, scale: bigint = 100n): number {
-  return Number(value) / Number(scale);
+export function safeDollar(input: number, scaleFactor: bigint = 100n): number {
+  const fixed = BigInt(Math.round(input * Number(scaleFactor)));
+  return Number(fixed) / (100 * Number(scaleFactor));
 }

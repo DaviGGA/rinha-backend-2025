@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "npx ts-node src/index.ts",
     "rinha:up": "docker-compose -f ./rinha/payment-processor/docker-compose.yml up -d",
-    "rinha:test": "k6 run rinha/rinha-test/rinha.js",
+    "rinha:test": "npx ts-node src/scripts/flush.ts && k6 run rinha/rinha-test/rinha.js",
     "compose:up": "docker-compose -f docker-compose.yml up -d",
     "build": "tsc",
     "start": "node dist/index.js"
