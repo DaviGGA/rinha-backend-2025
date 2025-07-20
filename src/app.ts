@@ -29,10 +29,10 @@ const app = createServer(async (req, res) => {
     req.on("data", chunk => (body += chunk));
     req.on("end", () => {
       queue.add("process-payment", JSON.parse(body), {
-        attempts: 6, 
+        attempts: 3, 
         backoff: {
-          type :"fixed", 
-          delay: 1_500
+          type :"exponential", 
+          delay: 1_000
         }
       })
 
