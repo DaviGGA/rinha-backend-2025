@@ -29,7 +29,7 @@ worker.on("completed", async (job) => {
 })
 
 worker.on("failed", async (job) => {
-    redis.set("processor", "fallback")
+    redis.set("processor", "fallback");
 })
 
 new Worker("check-health", async () => {

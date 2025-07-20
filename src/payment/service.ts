@@ -37,16 +37,16 @@ export async function paymentSummary(from: string | undefined, to: string | unde
     fallback: { totalRequests: 0, totalAmount: 0 }
   };
   
-  for (const payment of payments) {
-    if(!isFromRange(payment, {from, to})) continue;
+  for (let i = 0; i < payments.length; i++) {
+    if(!isFromRange(payments[i], {from, to})) continue;
     
-    if (payment.type == "default") {
-      result.default.totalAmount += payment.amount;
+    if (payments[i].type == "default") {
+      result.default.totalAmount += payments[i].amount;
       result.default.totalRequests += 1;
     }
 
-    if (payment.type == "fallback") {
-      result.fallback.totalAmount += payment.amount;
+    if (payments[i].type == "fallback") {
+      result.fallback.totalAmount += payments[i].amount;
       result.fallback.totalRequests += 1;
     }
   }

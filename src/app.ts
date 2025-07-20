@@ -1,10 +1,68 @@
-import Koa, { Context, Next } from "koa";
-import bodyParser from "koa-bodyparser";
-import { paymentRouter } from "./payment/router";
+import * as service from "./payment/service"
+import { URL } from "node:url";
+import { createServer } from "node:http";
+import { queue } from "./payment/queue";
+import { createPaymentProcessor } from "./gateway/payment-processor";
 
-const app = new Koa();
+const app = createServer(async (req, res) => {
+  const url = new URL(req.url!, `http://${req.headers.host}`);
 
-app.use(bodyParser());
-app.use(paymentRouter.routes())
+  if (req.method === "GET" && url.pathname === "/payments-summary") {
+    const searchParams = url.searchParams;
+    const from = searchParams.get("from");
+    const to = searchParams.get("to");
+
+    const summary = await service.paymentSummary(
+      from as string | undefined, 
+      to as string | undefined
+    );
+
+    res.writeHead(200, { 'Content-Type': 'application/json'});
+    res.end(JSON.stringify(summary))
+
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/payments") {
+    let body = '';
+
+    req.on("data", chunk => (body += chunk));
+    req.on("end", () => {
+      queue.add("process-payment", JSON.parse(body), {
+        attempts: 6, 
+        backoff: {
+          type :"fixed", 
+          delay: 1_500
+        }
+      })
+
+      res.writeHead(200, { 'Content-Type': 'application/json'});
+      res.end(JSON.stringify({ message: "Pagamento na fila" }))
+    })
+
+    return
+  }
+
+   if (req.method === "POST" && url.pathname === "/purge-payments") {
+      await Promise.all([
+        createPaymentProcessor("default").purgePayments(),
+        createPaymentProcessor("fallback").purgePayments()
+      ])
+
+      res.writeHead(200);
+      res.end();
+      return
+   }
+
+
+  res.writeHead(404);
+  res.end(JSON.stringify({ message: 'Not Found' }));
+
+})
+
+// const app = new Koa();
+
+// app.use(bodyParser());
+// app.use(paymentRouter.routes())
 
 export { app }

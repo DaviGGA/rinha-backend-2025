@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   nginx:
     image: nginx:latest
@@ -16,7 +14,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.15"
+          cpus: "0.1"
           memory: "20MB"
   app1:
     build: .
@@ -33,8 +31,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.6"
-          memory: "125MB"
+          cpus: "0.65"
+          memory: "100MB"
   app2:
     build: .
     container_name: app2
@@ -50,8 +48,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.6"
-          memory: "125MB"
+          cpus: "0.65"
+          memory: "100MB"
   redis:
     image: redis:7.2-alpine
     container_name: redis
@@ -60,8 +58,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.15"
-          memory: "80MB"
+          cpus: "0.1"
+          memory: "130MB"
     networks:
       - app-network
 networks:
