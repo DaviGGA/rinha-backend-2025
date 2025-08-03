@@ -1,7 +1,13 @@
 import * as service from "./payment/service"
 import { URL } from "node:url";
 import { createServer } from "node:http";
-import { queue } from "./payment/queue";
+import { Queue } from "./queue";
+
+Queue.loop();
+
+setInterval(() => {
+  service.savePaymentProcessorHealth();
+}, 5_000);
 
 const app = createServer(async (req, res) => {
   const url = new URL(req.url!, `http://${req.headers.host}`);
@@ -26,14 +32,7 @@ const app = createServer(async (req, res) => {
 
     req.on("data", chunk => (body += chunk));
     req.on("end", () => {
-      queue.add("process-payment", JSON.parse(body), {
-        attempts: 3, 
-        backoff: {
-          type :"exponential", 
-          delay: 1_000
-        }
-      })
-
+      Queue.add(body);
       res.writeHead(200, { 'Content-Type': 'application/json'});
       res.end(JSON.stringify({ message: "Pagamento na fila" }))
     })

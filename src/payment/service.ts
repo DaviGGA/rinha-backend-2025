@@ -1,8 +1,9 @@
-import { redis } from "./queue";
 import { createPaymentProcessor } from "../gateway/payment-processor"
 import { ServiceHealth } from "../gateway/service-health";
 import { Payment, ToProcessPayment } from "./payment";
-import { parseStringArrToJson, safeDollar} from "./utils";
+import { parseStringArrToJson } from "./utils";
+import { Queue } from "../queue";
+import { redis } from "../redis";
 
 export async function processPayment(payment: ToProcessPayment) {
   const chosenProcessor = (await redis.get("processor") ?? "default") as ("default" | "fallback");
@@ -16,21 +17,18 @@ export async function processPayment(payment: ToProcessPayment) {
 
   const { success } = await paymentProcessor.processPayment(processPayment);
 
-  if(!success) 
-    throw new Error("Não foi possível processor o pagamento.");
-
-  return processPayment;
+  if(!success) return Queue.addLast(processPayment);
+  await savePayment(processPayment);
 }
 
 export async function savePayment(payment: Payment) {
-  payment.amount = payment.amount * 100;
   return await redis.lpush("payments", JSON.stringify(payment))
 }
 
 export async function paymentSummary(from: string | undefined, to: string | undefined) {
   const stringPayments = (await redis.lrange("payments", 0, -1));
 
-  const payments = parseStringArrToJson<Payment>(stringPayments)
+  const payments = parseStringArrToJson<Payment>(stringPayments);
 
   const result = {
     default: { totalRequests: 0, totalAmount: 0 },
@@ -52,8 +50,8 @@ export async function paymentSummary(from: string | undefined, to: string | unde
   }
 
   return {
-    default: {...result.default, totalAmount: safeDollar(result.default.totalAmount)},
-    fallback: {...result.fallback, totalAmount: safeDollar(result.fallback.totalAmount)}
+    default: {...result.default, totalAmount: Number(result.default.totalAmount.toFixed(2))},
+    fallback: {...result.fallback, totalAmount: Number(result.fallback.totalAmount.toFixed(2))}
   }
 }
 
