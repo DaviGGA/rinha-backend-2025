@@ -2,7 +2,6 @@ import * as service from "./payment/service"
 import { URL } from "node:url";
 import { createServer } from "node:http";
 import { queue } from "./payment/queue";
-import { createPaymentProcessor } from "./gateway/payment-processor";
 
 const app = createServer(async (req, res) => {
   const url = new URL(req.url!, `http://${req.headers.host}`);
@@ -19,7 +18,6 @@ const app = createServer(async (req, res) => {
 
     res.writeHead(200, { 'Content-Type': 'application/json'});
     res.end(JSON.stringify(summary))
-
     return;
   }
 
@@ -39,16 +37,10 @@ const app = createServer(async (req, res) => {
       res.writeHead(200, { 'Content-Type': 'application/json'});
       res.end(JSON.stringify({ message: "Pagamento na fila" }))
     })
-
     return
   }
 
    if (req.method === "POST" && url.pathname === "/purge-payments") {
-      await Promise.all([
-        createPaymentProcessor("default").purgePayments(),
-        createPaymentProcessor("fallback").purgePayments()
-      ])
-
       res.writeHead(200);
       res.end();
       return
@@ -59,10 +51,5 @@ const app = createServer(async (req, res) => {
   res.end(JSON.stringify({ message: 'Not Found' }));
 
 })
-
-// const app = new Koa();
-
-// app.use(bodyParser());
-// app.use(paymentRouter.routes())
 
 export { app }
