@@ -1,10 +1,12 @@
-import { redis } from "./queue";
 import { createPaymentProcessor } from "../gateway/payment-processor"
 import { ServiceHealth } from "../gateway/service-health";
 import { Payment, ToProcessPayment } from "./payment";
 import { parseStringArrToJson, safeDollar} from "./utils";
+import { redisPool } from "../redis";
 
 export async function processPayment(payment: ToProcessPayment) {
+  const redis = await redisPool.acquire();
+
   const chosenProcessor = (await redis.get("processor") ?? "default") as ("default" | "fallback");
   const paymentProcessor = createPaymentProcessor(chosenProcessor);
 
@@ -19,15 +21,21 @@ export async function processPayment(payment: ToProcessPayment) {
   if(!success) 
     throw new Error("Não foi possível processor o pagamento.");
 
+  await redisPool.release(redis);
+
   return processPayment;
 }
 
 export async function savePayment(payment: Payment) {
+  const redis = await redisPool.acquire();
   payment.amount = payment.amount * 100;
-  return await redis.lpush("payments", JSON.stringify(payment))
+  await redis.lpush("payments", JSON.stringify(payment));
+  await redisPool.release(redis);
 }
 
 export async function paymentSummary(from: string | undefined, to: string | undefined) {
+  const redis = await redisPool.acquire();
+  
   const stringPayments = (await redis.lrange("payments", 0, -1));
 
   const payments = parseStringArrToJson<Payment>(stringPayments)
@@ -51,6 +59,8 @@ export async function paymentSummary(from: string | undefined, to: string | unde
     }
   }
 
+  await redisPool.release(redis);
+
   return {
     default: {...result.default, totalAmount: safeDollar(result.default.totalAmount)},
     fallback: {...result.fallback, totalAmount: safeDollar(result.fallback.totalAmount)}
@@ -73,6 +83,8 @@ function isFromRange(payment: Payment, { from, to }: Range) {
 }
 
 export async function savePaymentProcessorHealth() {
+  const redis = await redisPool.acquire();
+
   const defaultHealthPromise = createPaymentProcessor("default").serviceHealth();
   const fallBackHealthPromise = createPaymentProcessor("fallback").serviceHealth();
 
@@ -91,6 +103,8 @@ export async function savePaymentProcessorHealth() {
   );
 
   redis.set("processor", chosenPaymentProcessor)
+
+  await redisPool.release(redis);
 }
 
 function choosePaymentProcessorHealth(

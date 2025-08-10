@@ -10,7 +10,7 @@ paymentRouter.get("payments-summary", paymentSummary);
 paymentRouter.post("purge-payments", async (ctx: Context) => {
   await Promise.all([
     createPaymentProcessor("default").purgePayments(),
-    createPaymentProcessor("fallback").purgePayments()
+    createPaymentProcessor("fallback").purgePayments(),
   ])
   
   ctx.status = 200

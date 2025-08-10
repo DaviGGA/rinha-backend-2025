@@ -3,9 +3,7 @@ import { savePayment, processPayment, savePaymentProcessorHealth } from "./servi
 import { Payment, ToProcessPayment } from "./payment";
 import Redis from "ioredis";
 
-export let redis: Redis;
-
-redis = new Redis(
+const redis = new Redis(
     process.env.REDIS_URI ?? "", { 
         maxRetriesPerRequest: null, 
         keepAlive: 100,

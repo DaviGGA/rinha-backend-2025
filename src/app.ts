@@ -8,19 +8,22 @@ const app = createServer(async (req, res) => {
   const url = new URL(req.url!, `http://${req.headers.host}`);
 
   if (req.method === "GET" && url.pathname === "/payments-summary") {
-    const searchParams = url.searchParams;
-    const from = searchParams.get("from");
-    const to = searchParams.get("to");
-
-    const summary = await service.paymentSummary(
-      from as string | undefined, 
-      to as string | undefined
-    );
-
-    res.writeHead(200, { 'Content-Type': 'application/json'});
-    res.end(JSON.stringify(summary))
-
-    return;
+    try {
+        const searchParams = url.searchParams;
+        const from = searchParams.get("from");
+        const to = searchParams.get("to");
+    
+        const summary = await service.paymentSummary(
+          from as string | undefined, 
+          to as string | undefined
+        );
+    
+        res.writeHead(200, { 'Content-Type': 'application/json'});
+        res.end(JSON.stringify(summary))
+        return;
+    } catch(error) {
+      console.log("SUMMARY ERROR" ,error)
+    }
   }
 
   if (req.method === "POST" && url.pathname === "/payments") {

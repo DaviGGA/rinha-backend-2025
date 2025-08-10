@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "npx ts-node src/index.ts",
     "rinha:up": "docker-compose -f ./rinha/payment-processor/docker-compose.yml up -d",
-    "rinha:test": "npx ts-node src/scripts/flush.ts && k6 run rinha/rinha-test/rinha.js && npx ts-node src/scripts/flush.ts",
+    "rinha:test": "k6 run rinha/rinha-test/rinha.js",
     "compose:up": "docker-compose -f docker-compose.yml up -d",
     "build": "tsc",
     "start": "node dist/index.js"
@@ -18,6 +18,7 @@
     "@koa/router": "^13.1.1",
     "bullmq": "^5.56.3",
     "dotenv": "^17.0.1",
+    "generic-pool": "^3.9.0",
     "koa": "^3.0.0",
     "koa-bodyparser": "^4.4.1",
     "ts-node": "^10.9.2",
